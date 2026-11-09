@@ -70,7 +70,7 @@ Consultamos o estado desde Mongo1 repetindo a seguinte orde cada poucos segundos
 
 Aos **3,7 segundos**, Mongo1 foi elixido automaticamente como novo primario.
 
-![Elección do novo primario](img/a4_state_despois_borrado.png)
+![Elección do novo primario](img/a4_despois_borrado.png)
 
 A continuación, conectámonos ao replica set e inserimos unha nova ficha na base de datos `albergues`. Antes de inserila, cerciorámonos de que Mongo1 é realmente o nodo primario mediante un `db.hello()`. Como vemos, Mongo1 é realmente o nodo primario.
 
@@ -114,26 +114,63 @@ Intentamos realizar unha inserción, pero fallou porque non había ningún nodo 
 
 Coa preferencia de lectura por defecto (primary), tampouco foi posible establecer a conexión co replica set.
 
-![escritura fallida](img/a5_error.png)
-
 ![Erro ao tentar entrar no replica set sen o primario](img/a5_error.png)
 
 Forzamos entrar no replicaset co primario como server preferencial.
 
-docker compose exec mongo1 mongosh "mongodb://mongo1:27017/?replicaSet=rs0&readPreference=primaryPreferred&serverSelectionTimeoutMS=10000"
+`docker compose exec mongo1 mongosh "mongodb://mongo1:27017/?replicaSet=rs0&readPreference=primaryPreferred&serverSelectionTimeoutMS=10000"`
+
+Deste xeito puidemos consultar as fichas desde Mongo1, que estaba en estado SECONDARY. Aplicamos os scripts que cambian a configuración da lectura a "PrimaryPreferred", onde non é obligatorio que a lectura a realice o primario se ben segue sendo preferencial:
+
+```
+use albergues
+db.getMongo().setReadPref("primaryPreferred")
+db.fichas.find()
+```
+Como vemos na seguinte captura, o nodo secundario xa pode ler as fichas.
 
 ![Lector preferencial Primary](img/a5_cambio.png)
+
+E como se pode ver, o modo de lectura está en *PrimaryPreferred*. 
+
 ![Comprobación de cuál es el lector preferencial](img/a5_comprobacion.png)
+
+Restauramos os dous nodos que caeron e todo volve á normalidade. A replica set recupérase.
+
 ![Restauración del replica set tras reanudar los otros nodos](img/a5_restauracion.png)
 
 ## Cuestións
+
+#### 1. Por que non hai primario aínda que un nodo funciona?
+
+Para que haxa un primario, ten que haber unha maioría de nodos que estén en disposición de elixir un novo primario. Se só hai un nodo de tres que había, nunca se pode chegar a esa maioría.
+
+#### 2. Por que a lectura falla ou funciona segundo a preferencia de lectura?
+
+Por defecto, a lectura está configurada para que a faga o primario, por iso non deixaba entrar no replicaset e houbo que botar uso do script `mongodb://mongo1:27017/?replicaSet=rs0&readPreference=primaryPreferred&serverSelectionTimeoutMS=10000`. No momento en que cambias o modo a PrimaryPreferred, xa non é exclusiva a lectura do nodo primario, tamén a pode facer o secundario, e iso é o que ocorreu.
+
+#### 3. Que pasaría se o replica set tivese 5 nodos e caesen 2?
+
+Non daría erro porque quedarían 3 nodos dispoñibles que poderían deliberar a promoción a primario dun dos 3 nodos restantes.
+
+
+
+
+-------------------------------------------------------------------
 
 
 # E3. Garage: almacenamento de obxectos | Parte B
 
 ## 1. Formación do clúster (B1)
 
+Copiouse o env.example, creouse un segredo de 64 caracteres, arrancouse o docker compose.
+
+Consultouse o estado do nodo 1, conectáronse os nodos 2 e 3 mediante os seus identificadores e comprobouse que os tres nodos aparecían no estado do clúster.
+
 ## 2. Definición do layout (B2)
+
+Asignouse a cada nodo unha zona distinta e unha capacidade de 1 GB. Revisouse a configuración co comando layout show, aplicouse co comando layout apply --version 1 e comprobouse con garage status que os tres nodos tiñan a súa zona e capacidade asignadas.
+
 
 ## 3. Bucket, clave e primeiros datos (B3)
 
@@ -145,7 +182,7 @@ A continuación, instalouse a biblioteca boto3 e cargáronse 20 documentos de 51
 
 A verificación posterior confirmou que os 20 obxectos se puideron descargar correctamente e que ningún presentaba corrupción.
 
-![Verificación dos arquivos e estado do clúster](img/status_nodo_verificacion.png)
+![Verificación dos arquivos e estado do clúster](img/status_nodos_verificacion.png)
 
 ## 4. Cae un nodo
 ![Verificación tras a caída do nodo](img/verificacion_s3.png)
@@ -159,11 +196,17 @@ A verificación posterior confirmou que os 20 obxectos se puideron descargar cor
 
 ### Interpretación do quorum
 
-Interpretación do quórum
-Para redactar o informe, podemos destacar estas diferenzas:
-- Garage: replica os datos entre os tres nodos. Con dous nodos activos puidemos subir documentos, pero algunhas lecturas fallaron. Cun único nodo activo non se puideron completar as descargas, comportamento compatible coa necesidade de contar con suficientes réplicas dispoñibles.
-- MongoDB Replica Set: necesita unha maioría dos membros votantes para elixir e manter un Primary. Nun conxunto de tres membros, esa maioría é de dous. Cun só membro non pode manter o Primary.
-- Redis Sentinel: os Sentinel supervisan os nodos Redis e utilizan quórum e maioría para autorizar un failover. Cómpre distinguir isto da replicación dos datos: Sentinel non almacena nin replica os datos, senón que supervisa e coordina a recuperación.
+##### Garage: 
+
+Replica os datos entre os tres nodos. Con dous deles activos puidemos subir algúns documentos, pero algunhas lecturas fallaron (3 de 20). Cun único nodo activo en cambio non se puideron completar as descargas.
+
+##### MongoDB Replica Set: 
+
+Necesita unha maioría dos membros votantes para elixir e manter un Primary. Nun conxunto de tres membros, esa maioría é de dous. Cun só membro non se pode elixir un Primary.
+
+##### Redis Sentinel: 
+
+Os Sentinel supervisan os nodos Redis e utilizan quórum e maioría para autorizar un novo servidor principal. os sentinel comunícanse entre sí e escollen a promoción dunha réplica.
 
 ## Perda dun disco
 
