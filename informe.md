@@ -54,9 +54,77 @@ A principal vantaxe é a optimización dos recursos. Outorgarlle a un nodo secun
 
 O principal inconveniente son os potenciais retardos á hora de consultar a información que xusto acaba de entrar polo nodo primario e que aínda non tivo tempo de pasar aos secundarios. Isto xeneraría lecturas obsoletas e crear confusión.
 
-## Caída do primario
+## 4. Caída do primario
 
-## Caída de dous nodos
+Partimos da seguinte disposición dos nodos: Mongo3 é o primario e Mongo1 e Mongo2 son secundarios.
+
+![Estado inicial dos nodos](img/a4_state_inicial.png)
+
+Detívose o nodo primario mediante o comando:
+
+`docker compose stop mongo3`
+
+Consultamos o estado desde Mongo1 repetindo a seguinte orde cada poucos segundos:
+
+`docker compose exec mongo1 mongosh /scripts/estado.js`
+
+Aos **3,7 segundos**, Mongo1 foi elixido automaticamente como novo primario.
+
+![Elección do novo primario](img/a4_state_despois_borrado.png)
+
+A continuación, conectámonos ao replica set e inserimos unha nova ficha na base de datos `albergues`. Antes de inserila, cerciorámonos de que Mongo1 é realmente o nodo primario mediante un `db.hello()`. Como vemos, Mongo1 é realmente o nodo primario.
+
+![DB hello de comprobación](img/a4_db.hello.png)
+
+Agora sí, inserimos a nova ficha e comprobamos que aparece con `db.fichas.findOne`. operación realizouse correctamente, demostrando que o sistema continúa permitindo escrituras tras a caída do primario.
+
+![Inserción da nova ficha](img/a4_insertone_findone.png)
+
+#### Recuperación do antigo primario
+
+Reiniciamos o nodo Mongo3 mediante o comando:
+
+`docker compose start mongo3`
+
+Comprobamos que os tres nodos estaban activos: Mongo1 continuaba como primario e Mongo2 e Mongo3 como secundarios.
+
+![Estado dos nodos tras recuperar Mongo3s](img/a4_state_tras_recup.png)
+
+Finalmente, consultamos directamente Mongo3 para comprobar se recibira a ficha inserida durante a súa caída. O documento estaba dispoñible, confirmando que a replicación dos datos se realizou correctamente.
+
+![Comprobación da lectura da ficha inserida](img/a4_ficha_inserida.png)
+
+
+
+## 5. Caída de dous nodos
+
+Detivemos Mongo2 e Mongo3, deixando só Mongo1 activo: `docker compose stop mongo2 mongo3`
+
+Ao consultar o estado, comprobamos que Mongo1 permanecía como SECONDARY e non había ningún PRIMARY.
+
+![Estado A5](img/a5_state_tras_caida_doble.png)
+
+#### Proba de escritura
+
+Intentamos realizar unha inserción, pero fallou porque non había ningún nodo primario dispoñible. Ao conectarnos directamente a Mongo1, recibimos o erro NotWritablePrimary.
+
+![escritura fallida](img/a5_non_permite_escribir.png)
+
+#### Probas de lectura
+
+Coa preferencia de lectura por defecto (primary), tampouco foi posible establecer a conexión co replica set.
+
+![escritura fallida](img/a5_error.png)
+
+![Erro ao tentar entrar no replica set sen o primario](img/a5_error.png)
+
+Forzamos entrar no replicaset co primario como server preferencial.
+
+docker compose exec mongo1 mongosh "mongodb://mongo1:27017/?replicaSet=rs0&readPreference=primaryPreferred&serverSelectionTimeoutMS=10000"
+
+![Lector preferencial Primary](img/a5_cambio.png)
+![Comprobación de cuál es el lector preferencial](img/a5_comprobacion.png)
+![Restauración del replica set tras reanudar los otros nodos](img/a5_restauracion.png)
 
 ## Cuestións
 
