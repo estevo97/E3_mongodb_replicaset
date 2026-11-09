@@ -185,12 +185,19 @@ A verificación posterior confirmou que os 20 obxectos se puideron descargar cor
 ![Verificación dos arquivos e estado do clúster](img/status_nodos_verificacion.png)
 
 ## 4. Cae un nodo
+Paramos o nodo 3 e verificamos os arquivos. Como vemos, só se puideron descargar 17 de 20 pola caída dese nodo.
 ![Verificación tras a caída do nodo](img/verificacion_s3.png)
-![Status do cluster tras a caída dun nodo](img/b4_status.png)
+A subida dos 5 arquivos pódese facer sen problema.
 ![Subida de 5 arquivos](img/b4_subida.png)
+Tras a caída do nodo, o cluster marca o nodo 3 como nodo fallido, mentres que os nodos 1 e 2 están saudables.
+![Status do cluster tras a caída dun nodo](img/b4_status.png)
+
 
 ## 5. Caen dous nodos
+Paramos o nodo 2 e tratamos de verificar o nodo 1. Esta vez da erro porque 1 só nodo non pode formar unha maioría. Os arquivos non puideron ser descargados.
 ![Verificación tras a caída dos dous nodos](img/b5_verificacion.png)
+
+Arrancamos de novo os nodos 2 e 3. Como vemos, os arquivos agora sí que puideron ser descargados e o estado dos 3 nodos volve a ser saudable.
 ![Status recuperado](img/b5_status_recuperado.png)
 ![Verificación recuperada](img/b5_verificacion_recuperada.png)
 
@@ -206,7 +213,7 @@ Necesita unha maioría dos membros votantes para elixir e manter un Primary. Nun
 
 ##### Redis Sentinel: 
 
-Os Sentinel supervisan os nodos Redis e utilizan quórum e maioría para autorizar un novo servidor principal. os sentinel comunícanse entre sí e escollen a promoción dunha réplica.
+Os Sentinel supervisan os nodos Redis e utilizan quórum e maioría para autorizar un novo servidor principal. Os sentinel comunícanse entre sí e escollen a promoción dunha réplica.
 
 ## Perda dun disco
 
@@ -236,3 +243,20 @@ Despois executouse o seguinte comando para ordenar a reparación dos bloques:
 Tras a execución, esperamos que o volume da datos do nodo 3 volva a ter 10,3 MB. Comprobouse que así era:
 
 ![Tamaño despois da reparación](img/b6_despois_reparacion.png)
+
+## 7. Cuestións
+
+#### Cál e o espazo que ocupan 300 GB de documentos en: 1. Garage 3 replicacións e 2. erasure coding 4 + 2. Cántos fallos tolera cada un
+
+- Garage | Espazo: Como son 3 réplicas ocupa 300 MB x 3 = 900 MB. 
+- Garage | Tolerancia a erros: Pode perder unha copia menos ca o número de réplicas, neste caso 3-1 = 2 copias.  
+- Erasure | Espazo: Contén 4 fragmentos de datos e 2 de paridade (de redundancia). Como teñen todos o mesmo peso e o conxunto de datos ocupa 300 MB, podemos saber que os 2 fragmentos extra de paridade ocupan 150 MB, para un total de 450 MB.  
+- Erasure | Tolerancia a erros: Pode tolerar ata a desaparición de 2 fragmentos de datos, xa que se poden volver a xenerar a partir dos fragmentos de paridade.
+
+#### Para qué serve o manifesto .json da s3_proba.py. Qué erros detecta que Garage non é capaz.
+
+O manifesto garda un rexistro dos obxectos subidos pola proba e información sobre a súa pegada (o hash). A vantaxe fronte a Garage é que permite detectar os cambios que se producen nos ficheiros, tales como modificacións, delecións ou insercións.
+
+#### A importancia de gardar as copias en zonas distintas
+
+A resiliencia é moito maior cando as copias están en zonas de dispoñibilidade distintas. Cando se produce unha caída dun servidor ou servidores nunha zona, as réplicas poden verse todas afectadas se están nesa zona; sen embargo, se están dispostas en zonas diferentes non se ven afectadas e permiten a preservación dos datos.
