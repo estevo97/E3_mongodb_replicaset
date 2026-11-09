@@ -1,5 +1,7 @@
 # Informe da tarefa "Tolerancia a fallos" | Parte A
 
+### Autor: Estevo Arias García
+
 Tras arrancar os tres nodos con `docker compose up -d`, iniciouse o réplica set (`docker compose exec mongo1 mongosh /scripts/iniciar_re.js`) e consultouse o estado dos nodos.
 
 Estado dos nodos:
