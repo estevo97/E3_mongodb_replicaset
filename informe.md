@@ -124,4 +124,4 @@ Despois executouse o seguinte comando para ordenar a reparación dos bloques:
 
 Tras a execución, esperamos que o volume da datos do nodo 3 volva a ter 10,3 MB. Comprobouse que así era:
 
-![Tamaño despois da reparación](img/b6_despois_reparación.png)
+![Tamaño despois da reparación](img/b6_despois_reparacion.png)
