@@ -187,8 +187,10 @@ A verificación posterior confirmou que os 20 obxectos se puideron descargar cor
 ## 4. Cae un nodo
 Paramos o nodo 3 e verificamos os arquivos. Como vemos, só se puideron descargar 17 de 20 pola caída dese nodo.
 ![Verificación tras a caída do nodo](img/verificacion_s3.png)
+
 A subida dos 5 arquivos pódese facer sen problema.
 ![Subida de 5 arquivos](img/b4_subida.png)
+
 Tras a caída do nodo, o cluster marca o nodo 3 como nodo fallido, mentres que os nodos 1 e 2 están saudables.
 ![Status do cluster tras a caída dun nodo](img/b4_status.png)
 
@@ -215,7 +217,7 @@ Necesita unha maioría dos membros votantes para elixir e manter un Primary. Nun
 
 Os Sentinel supervisan os nodos Redis e utilizan quórum e maioría para autorizar un novo servidor principal. Os sentinel comunícanse entre sí e escollen a promoción dunha réplica.
 
-## Perda dun disco
+## 6. Perda dun disco
 
 Simulouse a perda do disco do nodo 3 e a súa substitución por un volume novo e baleiro, mantendo o volume de metadatos para conservar a identidade do nodo.
 
